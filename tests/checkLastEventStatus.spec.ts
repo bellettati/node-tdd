@@ -23,19 +23,45 @@ class CheckLastEventStatus {
     }
 }
 
+type LoadLastEventOutput = {
+    endDate: Date,
+    reviewDurationInHours: number
+}
 interface LoadLastEventRepository {
-    loadLastEvent(input: { groupId: string }): Promise<{ endDate: Date } | undefined>
+    loadLastEvent(input: { groupId: string }): Promise<LoadLastEventOutput | undefined>
 }
 
 class LoadLastEventRepositorySpy implements LoadLastEventRepository {
     groupId?: string
     callsCount = 0
-    output?: { endDate: Date }
+    output?: LoadLastEventOutput
+    private currDateInMilli = new Date().getTime()
 
-    async loadLastEvent({ groupId }: { groupId: string }): Promise<{ endDate: Date } | undefined> {
+    async loadLastEvent({ groupId }: { groupId: string }): Promise<LoadLastEventOutput | undefined> {
         this.groupId = groupId
         this.callsCount++
         return this.output
+    }
+
+    setEndDateAfterCurrDate(): void {
+        this.output = {
+            endDate: new Date(this.currDateInMilli + 1),
+            reviewDurationInHours: 1
+        }
+    }
+
+    setEndDateToCurrDate(): void {
+        this.output = {
+            endDate: new Date(),
+            reviewDurationInHours: 1
+        }
+    }
+
+    setEndDateBeforeCurrDate(): void {
+        this.output = {
+            endDate: new Date(this.currDateInMilli - 1),
+            reviewDurationInHours: 1
+        }
     }
 }
 
@@ -77,9 +103,7 @@ describe('CheckLastEventStatus', () => {
 
     it('shoud return status ACTIVE when current date is before end date', async () => {
         const { SUT, loadLastEventRepository } = makeSut()
-        loadLastEventRepository.output = {
-            endDate: new Date(new Date().getTime() + 1)
-        }
+        loadLastEventRepository.setEndDateAfterCurrDate()
 
         const status = await SUT.execute({ groupId })
 
@@ -88,9 +112,7 @@ describe('CheckLastEventStatus', () => {
 
     it('shoud return status ACTIVE when current date is equal to end date', async () => {
         const { SUT, loadLastEventRepository } = makeSut()
-        loadLastEventRepository.output = {
-            endDate: new Date()
-        }
+        loadLastEventRepository.setEndDateToCurrDate()
 
         const status = await SUT.execute({ groupId })
 
@@ -99,8 +121,20 @@ describe('CheckLastEventStatus', () => {
 
     it('should return status IN_REVIEW when current date is after end date', async () => {
         const { SUT, loadLastEventRepository } = makeSut()
+        loadLastEventRepository.setEndDateBeforeCurrDate()
+
+        const status = await SUT.execute({ groupId })
+
+        expect(status).toBe(EventStatus.IN_REVIEW)
+    })
+
+    it('should return status IN_REVIEW when current date is after end date', async () => {
+        const { SUT, loadLastEventRepository } = makeSut()
+        const reviewDurationInHours = 1
+        const reviewDurationInMs = reviewDurationInHours * 1000 * 60 * 60
         loadLastEventRepository.output = {
-            endDate: new Date(new Date().getTime() - 1)
+            endDate: new Date(new Date().getTime() - reviewDurationInMs),
+            reviewDurationInHours
         }
 
         const status = await SUT.execute({ groupId })
