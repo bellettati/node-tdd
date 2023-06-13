@@ -128,7 +128,7 @@ describe('CheckLastEventStatus', () => {
         expect(status).toBe(EventStatus.IN_REVIEW)
     })
 
-    it('should return status IN_REVIEW when current date is after end date', async () => {
+    it('should return status IN_REVIEW when current date is before review date', async () => {
         const { SUT, loadLastEventRepository } = makeSut()
         const reviewDurationInHours = 1
         const reviewDurationInMs = reviewDurationInHours * 1000 * 60 * 60
@@ -142,7 +142,7 @@ describe('CheckLastEventStatus', () => {
         expect(status).toBe(EventStatus.IN_REVIEW)
     })
 
-    it('should return status IN_REVIEW when current date is equal to end date', async () => {
+    it('should return status IN_REVIEW when current date is equal review date', async () => {
         const { SUT, loadLastEventRepository } = makeSut()
         const reviewDurationInHours = 1
         const reviewDurationInMs = reviewDurationInHours * 1000 * 60 * 60
@@ -155,4 +155,5 @@ describe('CheckLastEventStatus', () => {
 
         expect(status).toBe(EventStatus.IN_REVIEW)
     })
+
 })
