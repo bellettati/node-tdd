@@ -15,11 +15,15 @@ class CheckLastEventStatus {
     public async execute({ groupId }: { groupId: string }): Promise<EventStatus> {
         const event = await this.loadLastEventRepository.loadLastEvent({ groupId })
         const currDate = new Date()
-        if(!event) {
-            return EventStatus.DONE 
-        }
+        
+        if(!event) { return EventStatus.DONE }
+        
         const isActive = currDate <= event.endDate
-        return isActive ? EventStatus.ACTIVE : EventStatus.IN_REVIEW
+        if(isActive) { return EventStatus.ACTIVE }
+        
+        const reviewDurationInMs = event.reviewDurationInHours * 1000 * 60 * 60
+        const reviewDate = new Date(event.endDate.getTime() + reviewDurationInMs)
+        return reviewDate >= currDate ? EventStatus.IN_REVIEW : EventStatus.DONE  
     }
 }
 
@@ -156,4 +160,18 @@ describe('CheckLastEventStatus', () => {
         expect(status).toBe(EventStatus.IN_REVIEW)
     })
 
+    
+    it('should return status DONE when current date is after review date', async () => {
+        const { SUT, loadLastEventRepository } = makeSut()
+        const reviewDurationInHours = 1
+        const reviewDurationInMs = reviewDurationInHours * 1000 * 60 * 60
+        loadLastEventRepository.output = {
+            endDate: new Date(new Date().getTime() - reviewDurationInMs - 1 ),
+            reviewDurationInHours
+        }
+
+        const status = await SUT.execute({ groupId })
+
+        expect(status).toBe(EventStatus.DONE)
+    })
 })
