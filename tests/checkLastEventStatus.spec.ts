@@ -4,7 +4,7 @@ import { set, reset } from 'mockdate'
 enum EventStatus {
     ACTIVE = 'active',
     DONE = 'done',
-    IN_REVIEW = 'in review'
+    IN_REVIEW = 'inReview'
 }
 
 class CheckLastEventStatus {
@@ -14,7 +14,11 @@ class CheckLastEventStatus {
 
     public async execute({ groupId }: { groupId: string }): Promise<string> {
         const event = await this.loadLastEventRepository.loadLastEvent({ groupId })
-        return event === undefined ? EventStatus.DONE : EventStatus.ACTIVE  
+        if(!event) {
+            return EventStatus.DONE
+        }
+        const currDate = new Date()
+        return currDate < event.endDate ? EventStatus.ACTIVE : EventStatus.IN_REVIEW  
     }
 }
 
@@ -70,7 +74,7 @@ describe('CheckLastEventStatus', () => {
         expect(status).toBe(EventStatus.DONE)
     }),
 
-    it('shoud return status active current date is before end date', async () => {
+    it('shoud return status ACTIVE when current date is before end date', async () => {
         const { SUT, loadLastEventRepository } = makeSut()
         loadLastEventRepository.output = {
             endDate: new Date(new Date().getTime() + 1)
@@ -79,5 +83,16 @@ describe('CheckLastEventStatus', () => {
         const status = await SUT.execute({ groupId })
 
         expect(status).toBe(EventStatus.ACTIVE)
+    })
+
+    it('should return status IN_REVIEW when current date is after end date', async () => {
+        const { SUT, loadLastEventRepository } = makeSut()
+        loadLastEventRepository.output = {
+            endDate: new Date(new Date().getTime() - 1)
+        }
+
+        const status = await SUT.execute({ groupId })
+
+        expect(status).toBe(EventStatus.IN_REVIEW)
     })
 })
