@@ -12,13 +12,14 @@ class CheckLastEventStatus {
         private readonly loadLastEventRepository: LoadLastEventRepository
     ) {}
 
-    public async execute({ groupId }: { groupId: string }): Promise<string> {
+    public async execute({ groupId }: { groupId: string }): Promise<EventStatus> {
         const event = await this.loadLastEventRepository.loadLastEvent({ groupId })
-        if(!event) {
-            return EventStatus.DONE
-        }
         const currDate = new Date()
-        return currDate < event.endDate ? EventStatus.ACTIVE : EventStatus.IN_REVIEW  
+        if(!event) {
+            return EventStatus.DONE 
+        }
+        const isActive = currDate <= event.endDate
+        return isActive ? EventStatus.ACTIVE : EventStatus.IN_REVIEW
     }
 }
 
@@ -78,6 +79,17 @@ describe('CheckLastEventStatus', () => {
         const { SUT, loadLastEventRepository } = makeSut()
         loadLastEventRepository.output = {
             endDate: new Date(new Date().getTime() + 1)
+        }
+
+        const status = await SUT.execute({ groupId })
+
+        expect(status).toBe(EventStatus.ACTIVE)
+    })
+
+    it('shoud return status ACTIVE when current date is equal to end date', async () => {
+        const { SUT, loadLastEventRepository } = makeSut()
+        loadLastEventRepository.output = {
+            endDate: new Date()
         }
 
         const status = await SUT.execute({ groupId })
