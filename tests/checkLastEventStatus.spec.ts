@@ -133,6 +133,20 @@ describe('CheckLastEventStatus', () => {
         const reviewDurationInHours = 1
         const reviewDurationInMs = reviewDurationInHours * 1000 * 60 * 60
         loadLastEventRepository.output = {
+            endDate: new Date(new Date().getTime() - reviewDurationInMs + 1),
+            reviewDurationInHours
+        }
+
+        const status = await SUT.execute({ groupId })
+
+        expect(status).toBe(EventStatus.IN_REVIEW)
+    })
+
+    it('should return status IN_REVIEW when current date is equal to end date', async () => {
+        const { SUT, loadLastEventRepository } = makeSut()
+        const reviewDurationInHours = 1
+        const reviewDurationInMs = reviewDurationInHours * 1000 * 60 * 60
+        loadLastEventRepository.output = {
             endDate: new Date(new Date().getTime() - reviewDurationInMs),
             reviewDurationInHours
         }
