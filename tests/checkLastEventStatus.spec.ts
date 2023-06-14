@@ -39,7 +39,7 @@ class LoadLastEventRepositorySpy implements LoadLastEventRepository {
     groupId?: string
     callsCount = 0
     output?: LoadLastEventOutput
-    private currDateInMilli = new Date().getTime()
+    private currDateInMs = new Date().getTime()
 
     async loadLastEvent({ groupId }: { groupId: string }): Promise<LoadLastEventOutput | undefined> {
         this.groupId = groupId
@@ -49,7 +49,7 @@ class LoadLastEventRepositorySpy implements LoadLastEventRepository {
 
     setEndDateAfterCurrDate(): void {
         this.output = {
-            endDate: new Date(this.currDateInMilli + 1),
+            endDate: new Date(this.currDateInMs + 1),
             reviewDurationInHours: 1
         }
     }
@@ -63,8 +63,38 @@ class LoadLastEventRepositorySpy implements LoadLastEventRepository {
 
     setEndDateBeforeCurrDate(): void {
         this.output = {
-            endDate: new Date(this.currDateInMilli - 1),
+            endDate: new Date(this.currDateInMs - 1),
             reviewDurationInHours: 1
+        }
+    }
+
+    setCurrDateBeforeReviewEndDate(): void {
+        const reviewDurationInHours = 1
+        const reviewDurationInMs = reviewDurationInHours * 1000 * 60 * 60
+
+        this.output = {
+            endDate: new Date(this.currDateInMs - reviewDurationInMs + 1),
+            reviewDurationInHours
+        }
+    }
+
+    setCurrDateToReviewDate(): void {
+        const reviewDurationInHours = 1
+        const reviewDurationInMs = reviewDurationInHours * 1000 * 60 * 60
+
+        this.output = {
+            endDate: new Date(this.currDateInMs - reviewDurationInMs),
+            reviewDurationInHours
+        }
+    }
+
+    setCurrDateAfterReviewEndDate(): void {
+        const reviewDurationInHours = 1
+        const reviewDurationInMs = reviewDurationInHours * 1000 * 60 * 60
+
+        this.output = {
+            endDate: new Date(this.currDateInMs - reviewDurationInMs - 1),
+            reviewDurationInHours
         }
     }
 }
@@ -132,43 +162,27 @@ describe('CheckLastEventStatus', () => {
         expect(status).toBe(EventStatus.IN_REVIEW)
     })
 
-    it('should return status IN_REVIEW when current date is before review date', async () => {
+    it('should return status IN_REVIEW when current date is before end of review date', async () => {
         const { SUT, loadLastEventRepository } = makeSut()
-        const reviewDurationInHours = 1
-        const reviewDurationInMs = reviewDurationInHours * 1000 * 60 * 60
-        loadLastEventRepository.output = {
-            endDate: new Date(new Date().getTime() - reviewDurationInMs + 1),
-            reviewDurationInHours
-        }
+        loadLastEventRepository.setCurrDateBeforeReviewEndDate()
 
         const status = await SUT.execute({ groupId })
 
         expect(status).toBe(EventStatus.IN_REVIEW)
     })
 
-    it('should return status IN_REVIEW when current date is equal review date', async () => {
+    it('should return status IN_REVIEW when current date is equal to end of review date', async () => {
         const { SUT, loadLastEventRepository } = makeSut()
-        const reviewDurationInHours = 1
-        const reviewDurationInMs = reviewDurationInHours * 1000 * 60 * 60
-        loadLastEventRepository.output = {
-            endDate: new Date(new Date().getTime() - reviewDurationInMs),
-            reviewDurationInHours
-        }
+        loadLastEventRepository.setCurrDateToReviewDate()
 
         const status = await SUT.execute({ groupId })
 
         expect(status).toBe(EventStatus.IN_REVIEW)
     })
-
     
-    it('should return status DONE when current date is after review date', async () => {
+    it('should return status DONE when current date is after end of review date', async () => {
         const { SUT, loadLastEventRepository } = makeSut()
-        const reviewDurationInHours = 1
-        const reviewDurationInMs = reviewDurationInHours * 1000 * 60 * 60
-        loadLastEventRepository.output = {
-            endDate: new Date(new Date().getTime() - reviewDurationInMs - 1 ),
-            reviewDurationInHours
-        }
+        loadLastEventRepository.setCurrDateAfterReviewEndDate()
 
         const status = await SUT.execute({ groupId })
 
